@@ -16,22 +16,30 @@ function calculateFCFS(requests, head) {
 
   return { seek, order };
 }
-
 function calculateSSTF(requests, head) {
   let seek = 0;
   let current = head;
   let pending = [...requests];
   let order = [head];
 
-  while (pending.length) {
-    let closest = pending.reduce((prev, curr) =>
-      Math.abs(curr - current) < Math.abs(prev - current) ? curr : prev
-    );
+  while (pending.length > 0) {
+    let minDist = Infinity;
+    let index = -1;
 
+    for (let i = 0; i < pending.length; i++) {
+      const dist = Math.abs(pending[i] - current);
+      if (dist < minDist) {
+        minDist = dist;
+        index = i;
+      }
+    }
+
+    let closest = pending[index];
     seek += Math.abs(current - closest);
     current = closest;
     order.push(closest);
-    pending = pending.filter((r) => r !== closest);
+
+    pending.splice(index, 1);
   }
 
   return { seek, order };
