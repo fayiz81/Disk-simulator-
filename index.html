@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Disk Scheduling Simulator</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <div class="logo-block">
+      <div class="disk-icon">
+        <div class="disk-ring"></div>
+        <div class="disk-ring r2"></div>
+        <div class="disk-ring r3"></div>
+        <div class="disk-dot"></div>
+      </div>
+      <div>
+        <h1 class="title">DiskSim<span class="accent">OS</span></h1>
+        <p class="subtitle">Disk Scheduling Algorithm Visualizer</p>
+      </div>
+    </div>
+    <div class="badges">
+      <span class="badge">FCFS</span>
+      <span class="badge">SSTF</span>
+      <span class="badge">SCAN</span>
+      <span class="badge">C-SCAN</span>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN LAYOUT -->
+<main>
+
+  <!-- LEFT PANEL: CONFIG -->
+  <aside class="panel config-panel">
+    <h2 class="panel-title">⚙ Configuration</h2>
+
+    <div class="form-group">
+      <label>Disk Size (cylinders)</label>
+      <input type="number" id="diskSize" value="200" min="50" max="1000"/>
+    </div>
+
+    <div class="form-group">
+      <label>Initial Head Position</label>
+      <input type="number" id="headPos" value="53" min="0"/>
+    </div>
+
+    <div class="form-group">
+      <label>Direction (for SCAN / C-SCAN)</label>
+      <select id="direction">
+        <option value="right">Right ➜</option>
+        <option value="left">◄ Left</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Request Queue</label>
+      <textarea id="requestQueue" rows="3" placeholder="e.g. 98,183,37,122,14,124,65,67">98,183,37,122,14,124,65,67</textarea>
+      <div class="helper-row">
+        <button class="btn-ghost" id="randomizeBtn">🎲 Randomize</button>
+        <button class="btn-ghost" id="clearBtn">✕ Clear</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Algorithm</label>
+      <div class="algo-grid">
+        <label class="algo-card selected" data-algo="FCFS">
+          <input type="radio" name="algo" value="FCFS" checked hidden/>
+          <span class="algo-name">FCFS</span>
+          <span class="algo-desc">First Come First Served</span>
+        </label>
+        <label class="algo-card" data-algo="SSTF">
+          <input type="radio" name="algo" value="SSTF" hidden/>
+          <span class="algo-name">SSTF</span>
+          <span class="algo-desc">Shortest Seek Time First</span>
+        </label>
+        <label class="algo-card" data-algo="SCAN">
+          <input type="radio" name="algo" value="SCAN" hidden/>
+          <span class="algo-name">SCAN</span>
+          <span class="algo-desc">Elevator Algorithm</span>
+        </label>
+        <label class="algo-card" data-algo="CSCAN">
+          <input type="radio" name="algo" value="CSCAN" hidden/>
+          <span class="algo-name">C-SCAN</span>
+          <span class="algo-desc">Circular SCAN</span>
+        </label>
+      </div>
+    </div>
+
+    <button class="btn-run" id="runBtn">▶ Run Simulation</button>
+    <button class="btn-compare" id="compareBtn">⊞ Compare All</button>
+  </aside>
+
+  <!-- RIGHT: OUTPUT -->
+  <section class="output-area">
+
+    <!-- METRICS ROW -->
+    <div class="metrics-row" id="metricsRow">
+      <div class="metric-card" id="mc-total">
+        <div class="metric-label">Total Seek</div>
+        <div class="metric-value">—</div>
+        <div class="metric-unit">cylinders</div>
+      </div>
+      <div class="metric-card" id="mc-avg">
+        <div class="metric-label">Avg Seek Time</div>
+        <div class="metric-value">—</div>
+        <div class="metric-unit">cylinders/req</div>
+      </div>
+      <div class="metric-card" id="mc-throughput">
+        <div class="metric-label">Throughput</div>
+        <div class="metric-value">—</div>
+        <div class="metric-unit">req/unit time</div>
+      </div>
+      <div class="metric-card" id="mc-max">
+        <div class="metric-label">Max Single Seek</div>
+        <div class="metric-value">—</div>
+        <div class="metric-unit">cylinders</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" data-tab="seekChart">Seek Chart</button>
+      <button class="tab" data-tab="seekOrder">Seek Order</button>
+      <button class="tab" data-tab="barChart">Bar Chart</button>
+      <button class="tab" data-tab="compare">Compare All</button>
+    </div>
+
+    <!-- TAB PANELS -->
+    <div class="tab-content active" id="tab-seekChart">
+      <div class="chart-wrap">
+        <canvas id="seekLineChart"></canvas>
+      </div>
+      <div class="chart-legend" id="seekLegend"></div>
+    </div>
+
+    <div class="tab-content" id="tab-seekOrder">
+      <div class="seek-order-wrap">
+        <div class="seek-order-header">
+          <span>Step</span><span>From</span><span>To</span><span>Distance</span>
+        </div>
+        <div id="seekOrderList"></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-barChart">
+      <div class="chart-wrap">
+        <canvas id="seekBarChart"></canvas>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-compare">
+      <div class="chart-wrap">
+        <canvas id="compareChart"></canvas>
+      </div>
+      <div class="compare-table-wrap">
+        <table class="compare-table" id="compareTable">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              <th>Total Seek</th>
+              <th>Avg Seek</th>
+              <th>Max Seek</th>
+              <th>Throughput</th>
+              <th>Rank</th>
+            </tr>
+          </thead>
+          <tbody id="compareTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<footer>
+  <span>DiskSimOS · Disk Scheduling Simulator · Class Project</span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
